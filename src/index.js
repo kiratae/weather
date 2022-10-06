@@ -1,16 +1,25 @@
 const express = require('express')
 const https = require('https');
+const NODE_ENV = require('./config');
 const app = express()
-const port = process.env.PORT || 80
+const port = NODE_ENV.PORT || 3000
 
-const apiEndpoint = process.env.API_ENDPOINT,
-    apiKey = process.env.API_KEY
-const lat = 13.2778737997884,
-    long = 100.93188285044253,
-    unit = "M"
+const weatherApiEndpoint = NODE_ENV.W_API_ENDPOINT,
+    weatherApiKey = NODE_ENV.W_API_KEY,
+    apiKey = NODE_ENV.API_KEY
+const unit = "M"
 
-app.get('/', (request, response) => {
-    const url = `https://${apiEndpoint}/current?lat=${lat}&lon=${long}&key=${apiKey}&units=${unit}`
+app.get('/current', (request, response) => {
+    if (request.query.key != apiKey) {
+        response.status(401).send('Unauthorized')
+        return
+    }
+    if(!(request.query.lat && request.query.lon)){
+        response.status(400).send('lat or lon is missing,')
+        return
+    }
+
+    const url = `https://${weatherApiEndpoint}/current?lat=${request.query.lat}&lon=${request.query.lon}&key=${weatherApiKey ?? ''}&units=${request.query.unit ?? unit}`
 
     let resData = {}
 
@@ -22,7 +31,7 @@ app.get('/', (request, response) => {
 
         res.on('end', () => {
             const result = JSON.parse(Buffer.concat(data).toString())
-            const weatherData = result.data[0]
+            const weatherData = result?.data[0]
             if (weatherData) {
                 resData = {
                     temp: weatherData.temp,
